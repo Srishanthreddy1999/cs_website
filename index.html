@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check Sheet Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <div class="login-card">
+      <section class="login-hero">
+        <div class="eyebrow">Internal Quality System</div>
+        <h1>Digital Check Sheet Portal</h1>
+        <p>
+          A simple first version for admin-managed templates, employee data entry,
+          and PDF check sheet downloads.
+        </p>
+        <ul class="hero-points">
+          <li><span>01</span> Admin creates templates and employee accounts.</li>
+          <li><span>02</span> Employees log in with employee ID and password.</li>
+          <li><span>03</span> Daily entries are stored locally and exported as PDF.</li>
+        </ul>
+      </section>
+
+      <section class="login-form-wrap">
+        <h2>Sign In</h2>
+        <p class="subtext">Use employee ID as username. The default admin account is preloaded for testing.</p>
+
+        <form id="loginForm" class="form-grid">
+          <div class="field">
+            <label for="loginEmployeeId">User Name / Employee ID</label>
+            <input id="loginEmployeeId" type="text" placeholder="Enter employee ID" required />
+          </div>
+
+          <div class="field">
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" placeholder="Enter password" required />
+          </div>
+
+          <button class="action-btn" type="submit">Sign In</button>
+        </form>
+
+        <div class="note-card">
+          This is a front-end prototype stored in your browser using <code>localStorage</code>.
+          For real company use, the next step is a backend with secure authentication and database storage.
+        </div>
+
+        <div class="credentials">
+          <strong>Default admin login</strong><br />
+          User Name: <code>ADMIN001</code><br />
+          Password: <code>admin123</code><br /><br />
+          <strong>Sample employee login</strong><br />
+          User Name: <code>EMP001</code><br />
+          Password: <code>emp123</code>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="eyebrow">Factory Control</div>
+        <h2>Check Sheet Portal</h2>
+        <p>Paperless module check sheets with role-based access.</p>
+      </div>
+
+      <div class="user-badge">
+        <strong id="sidebarName">-</strong>
+        <p id="sidebarRole">-</p>
+        <p id="sidebarDepartment">-</p>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-link active" data-page="dashboardPage">Dashboard</button>
+        <button class="nav-link" data-page="usersPage" data-admin-only="true">Users</button>
+        <button class="nav-link" data-page="templatesPage" data-admin-only="true">Templates</button>
+        <button class="nav-link" data-page="entryPage">Daily Data Entry</button>
+        <button class="nav-link" data-page="profilePage">Profile</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="resetSeedButton" class="ghost-btn" type="button">Reset Demo Data</button>
+        <button id="logoutButton" class="ghost-btn" type="button">Logout</button>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <div class="topbar">
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <p id="pageSubtitle">Overview of modules, users, templates, and recent entries.</p>
+        </div>
+        <div class="topbar-meta">
+          <div id="topbarDate">-</div>
+          <div id="topbarUser">-</div>
+        </div>
+      </div>
+
+      <section id="dashboardPage" class="page active">
+        <div class="cards">
+          <article class="card">
+            <h3>Total No of Modules</h3>
+            <div class="metric" id="totalModulesMetric">0</div>
+            <div class="metric-note">Unique module names created in templates.</div>
+          </article>
+          <article class="card">
+            <h3>Total No of Users</h3>
+            <div class="metric" id="totalUsersMetric">0</div>
+            <div class="metric-note">Admin plus all employees using the system.</div>
+          </article>
+          <article class="card">
+            <h3>Total Templates</h3>
+            <div class="metric" id="totalTemplatesMetric">0</div>
+            <div class="metric-note">No duplicate part numbers allowed.</div>
+          </article>
+        </div>
+
+        <div class="table-card">
+          <div class="card-header">
+            <div>
+              <h3>Search Previous Check Sheets</h3>
+              <p>Search by module part number and download previously entered reports.</p>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="field">
+              <label for="dashboardSearchPart">Module Part Number</label>
+              <input id="dashboardSearchPart" type="text" placeholder="Enter part number" />
+            </div>
+            <button id="dashboardSearchButton" class="action-btn" type="button">Search</button>
+            <button id="dashboardSearchClearButton" class="ghost-btn" type="button">Clear</button>
+          </div>
+
+          <div id="dashboardSearchResults"></div>
+        </div>
+
+        <div class="table-card">
+          <div class="card-header">
+            <div>
+              <h3>Recently Entered Data</h3>
+              <p>Latest saved daily check sheets.</p>
+            </div>
+          </div>
+          <div id="recentEntriesWrap"></div>
+        </div>
+      </section>
+
+      <section id="usersPage" class="page">
+        <div class="split">
+          <div class="form-card">
+            <div class="card-header">
+              <div>
+                <h3>Create Employee Account</h3>
+                <p>Only admin can create employee accounts.</p>
+              </div>
+            </div>
+
+            <form id="employeeForm" class="form-grid">
+              <div class="two-col">
+                <div class="field">
+                  <label for="employeeName">Employee Name</label>
+                  <input id="employeeName" type="text" required />
+                </div>
+                <div class="field">
+                  <label for="employeeCode">Employee ID</label>
+                  <input id="employeeCode" type="text" required />
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="field">
+                  <label for="employeeDob">Employee DOB</label>
+                  <input id="employeeDob" type="date" required />
+                </div>
+                <div class="field">
+                  <label for="employeePassword">Password</label>
+                  <input id="employeePassword" type="password" required />
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="field">
+                  <label for="employeeDepartment">Department</label>
+                  <input id="employeeDepartment" type="text" placeholder="Production / Quality / Maintenance" required />
+                </div>
+                <div class="field">
+                  <label for="employeeReporting">Reporting Person Name</label>
+                  <input id="employeeReporting" type="text" placeholder="Supervisor name" required />
+                </div>
+              </div>
+
+              <button class="action-btn" type="submit">Create Account</button>
+            </form>
+          </div>
+
+          <div class="list-card">
+            <div class="card-header">
+              <div>
+                <h3>User Summary</h3>
+                <p>Total employee users visible below.</p>
+              </div>
+              <div class="metric" id="employeeCountMetric">0</div>
+            </div>
+            <div id="userSummaryState" class="small-note"></div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="card-header">
+            <div>
+              <h3>Employees Using This Website</h3>
+              <p>S.No, name, employee ID, and department.</p>
+            </div>
+          </div>
+          <div id="usersTableWrap"></div>
+        </div>
+      </section>
+
+      <section id="templatesPage" class="page">
+        <div class="split">
+          <div class="form-card">
+            <div class="card-header">
+              <div>
+                <h3>Create Template</h3>
+                <p>Upload Excel file with checkpoints. Duplicate part numbers are blocked.</p>
+              </div>
+            </div>
+
+            <form id="templateForm" class="form-grid">
+              <div class="two-col">
+                <div class="field">
+                  <label for="templateModuleName">Name of the Module</label>
+                  <input id="templateModuleName" type="text" required />
+                </div>
+                <div class="field">
+                  <label for="templatePartNo">Module Part Number</label>
+                  <input id="templatePartNo" type="text" required />
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="field">
+                  <label for="templateLevel">Level</label>
+                  <select id="templateLevel" required>
+                    <option value="IPQC">IPQC</option>
+                    <option value="LQC">LQC</option>
+                    <option value="OQC">OQC</option>
+                    <option value="Safety">Safety</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="templateFile">Upload Check Points Excel</label>
+                  <input id="templateFile" type="file" accept=".xlsx,.xls,.csv" required />
+                </div>
+              </div>
+
+              <div class="small-note">
+                Excel file should keep checkpoints in the first column. Example:
+                <code>Checkpoint</code>, <code>Machine condition</code>, <code>Oil level</code>.
+              </div>
+
+              <button class="action-btn" type="submit">Create Template</button>
+            </form>
+          </div>
+
+          <div class="list-card">
+            <div class="card-header">
+              <div>
+                <h3>Template Rules</h3>
+                <p>Template creation format requested.</p>
+              </div>
+            </div>
+            <div class="template-summary">
+              <div class="mini-card">
+                <strong>Name of Module</strong>
+                Human-readable module title used in daily entry.
+              </div>
+              <div class="mini-card">
+                <strong>Module Part Number</strong>
+                Must be unique. No duplicate template allowed.
+              </div>
+              <div class="mini-card">
+                <strong>Level</strong>
+                Example: IPQC.
+              </div>
+              <div class="mini-card">
+                <strong>Check Points Excel</strong>
+                Upload source used to build the digital checklist.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="card-header">
+            <div>
+              <h3>Templates</h3>
+              <p>S.No, part number, module name, level, created on, check sheet download.</p>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="field">
+              <label for="templateSearch">Search by part number or module</label>
+              <input id="templateSearch" type="text" placeholder="Search templates" />
+            </div>
+          </div>
+
+          <div id="templatesTableWrap"></div>
+        </div>
+      </section>
+
+      <section id="entryPage" class="page">
+        <div class="form-card">
+          <div class="card-header">
+            <div>
+              <h3>Daily Data Entry</h3>
+              <p>Select a module to open the uploaded check sheet template.</p>
+            </div>
+          </div>
+
+          <div class="three-col">
+            <div class="field">
+              <label for="entryTemplateSelect">Module Name / Part Number</label>
+              <select id="entryTemplateSelect"></select>
+            </div>
+            <div class="field">
+              <label for="entryDate">Date</label>
+              <input id="entryDate" type="text" readonly />
+            </div>
+            <div class="field">
+              <label for="entryTime">Time</label>
+              <input id="entryTime" type="text" readonly />
+            </div>
+          </div>
+        </div>
+
+        <div id="entryTemplateMeta" class="list-card hidden"></div>
+
+        <form id="entryForm" class="form-card hidden">
+          <div class="card-header">
+            <div>
+              <h3>Check Sheet</h3>
+              <p>Employee enters serial number, selects OK / Not OK, and adds verified by name.</p>
+            </div>
+          </div>
+
+          <div class="three-col">
+            <div class="field">
+              <label for="entryInspectedBy">Inspected By</label>
+              <input id="entryInspectedBy" type="text" readonly />
+            </div>
+            <div class="field">
+              <label for="entryVerifiedBy">Verified By</label>
+              <input id="entryVerifiedBy" type="text" placeholder="Reporting person name" required />
+            </div>
+            <div class="field">
+              <label for="entryGeneralSerial">Serial Number Prefix</label>
+              <input id="entryGeneralSerial" type="text" placeholder="Optional batch / lot prefix" />
+            </div>
+          </div>
+
+          <div id="checkpointRows" class="entry-sheet"></div>
+
+          <div class="field">
+            <label for="entryRemarks">Remarks</label>
+            <textarea id="entryRemarks" rows="4" placeholder="Additional notes"></textarea>
+          </div>
+
+          <div class="toolbar">
+            <button class="action-btn" type="submit">Save and Download PDF</button>
+            <button id="clearEntryButton" class="ghost-btn" type="button">Clear Form</button>
+          </div>
+        </form>
+
+        <div id="entryEmptyState" class="empty-state">
+          No template selected yet. Choose a module to open its check sheet.
+        </div>
+      </section>
+
+      <section id="profilePage" class="page">
+        <div class="form-card">
+          <div class="card-header">
+            <div>
+              <h3>Profile</h3>
+              <p>Employee code, role, department, and other basic details.</p>
+            </div>
+          </div>
+          <div id="profileDetails" class="profile-grid"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
